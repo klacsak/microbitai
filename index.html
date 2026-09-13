@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>micro:bit Bluetooth Vezérlő</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: 50px auto;
+            padding: 20px;
+            text-align: center;
+            background-color: #f4f4f9;
+        }
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        button {
+            padding: 10px 18px;
+            font-size: 16px;
+            margin: 6px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:disabled {
+            background-color: #ccc !important;
+            cursor: not-allowed;
+        }
+        .btn-connect { background-color: #28a745; color: white; }
+        .btn-disconnect { background-color: #dc3545; color: white; }
+        .btn-send { background-color: #007bff; color: white; }
+        
+        input[type="text"] {
+            width: calc(100% - 24px);
+            padding: 10px;
+            font-size: 16px;
+            margin: 15px 0;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }
+        #status {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+        .disconnected { color: #dc3545; }
+        .connected { color: #28a745; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>micro:bit Bluetooth Üzenetküldő</h2>
+        
+        <div>
+            <button id="connectBtn" class="btn-connect" onclick="connect()">Kapcsolódás</button>
+            <button id="disconnectBtn" class="btn-disconnect" onclick="disconnect()" disabled>Kapcsolat bontása</button>
+        </div>
+
+        <p id="status" class="disconnected">Nincs kapcsolat</p>
+
+        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
+
+        <div>
+            <input type="text" id="messageInput" placeholder="Írj be egy szöveget..." disabled>
+            <br>
+            <button id="sendBtn" class="btn-send" onclick="sendMessage()" disabled>Küldés</button>
+        </div>
+    </div>
+
+    <script>
+        // Nordic Semiconductor UART Service UUID-k (ezt használja a MakeCode UART szolgáltatása)
+        const UART_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+        const UART_TX_CHARACTERISTIC_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // RX a micro:bit szemszögéből, TX ide küld a weboldal
+
+        let bleDevice = null;
+        let txCharacteristic = null;
+
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const sendBtn = document.getElementById('sendBtn');
+        const messageInput = document.getElementById('messageInput');
+        const statusText = document.getElementById('status');
+
+        // Kapcsolódás
+        async function connect() {
+            try {
+                statusText.innerText = "Keresés...";
+                statusText.className = "";
+
+                // micro:bit keresése az UART szerviz alapján
+                bleDevice = await navigator.bluetooth.requestDevice({
+                    filters: [{ namePrefix: 'BBC micro:bit' }],
+                    optionalServices: [UART_SERVICE_UUID]
+                });
+
+                // Eseménykezelő, ha a micro:bit oldalon szakadna meg a kapcsolat
+                bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+                statusText.innerText = "Kapcsolódás a GATT szerverhez...";
+                const server = await bleDevice.gatt.connect();
+
+                statusText.innerText = "UART szolgáltatás lekérése...";
+                const service = await server.getPrimaryService(UART_SERVICE_UUID);
+
+                statusText.innerText = "Karakterisztika beállítása...";
+                txCharacteristic = await service.getCharacteristic(UART_TX_CHARACTERISTIC_UUID);
+
+                // UI frissítése sikeres csatlakozáskor
+                statusText.innerText = "Kapcsolódva!";
+                statusText.className = "connected";
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+                sendBtn.disabled = false;
+                messageInput.disabled = false;
+
+            } catch (error) {
+                console.error("Hiba a csatlakozáskor: ", error);
+                statusText.innerText = "Sikertelen kapcsolódás.";
+                statusText.className = "disconnected";
+            }
+        }
+
+        // Kapcsolat bontása
+        function disconnect() {
+            if (bleDevice && bleDevice.gatt.connected) {
+                bleDevice.gatt.disconnect();
+            }
+        }
+
+        // Ha megszakad a kapcsolat
+        function onDisconnected() {
+            statusText.innerText = "Nincs kapcsolat";
+            statusText.className = "disconnected";
+            connectBtn.disabled = false;
+            disconnectBtn.disabled = true;
+            sendBtn.disabled = true;
+            messageInput.disabled = true;
+            txCharacteristic = null;
+        }
+
+        // Üzenet küldése
+        async function sendMessage() {
+            const text = messageInput.value.trim();
+            if (!text || !txCharacteristic) return;
+
+            try {
+                // A micro:bit UART olvasó NewLine-ra vár, ezért \n-t fűzünk hozzá
+                const encoder = new TextEncoder();
+                const data = encoder.encode(text + "\n");
+
+                await txCharacteristic.writeValue(data);
+                messageInput.value = ""; // Mező ürítése
+            } catch (error) {
+                console.error("Hiba a küldéskor: ", error);
+                alert("Nem sikerült elküldeni az üzenetet!");
+            }
+        }
+
+        // Enter gombra is küldje el
+        messageInput.addEventListener("keyup", function(event) {
+            if (event.key === "Enter" && !sendBtn.disabled) {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
