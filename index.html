@@ -3,12 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>micro:bit Bluetooth Vezérlő</title>
+    <title>Teachable Machine + micro:bit AI Vezérlő</title>
+    <!-- TensorFlow.js és Teachable Machine Image könyvtárak -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
-            max-width: 500px;
-            margin: 50px auto;
+            max-width: 600px;
+            margin: 30px auto;
             padding: 20px;
             text-align: center;
             background-color: #f4f4f9;
@@ -17,16 +20,17 @@
             background: white;
             padding: 25px;
             border-radius: 12px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
         button {
             padding: 10px 18px;
-            font-size: 16px;
+            font-size: 15px;
             margin: 6px;
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            transition: background 0.2s;
+            font-weight: bold;
+            transition: 0.2s;
         }
         button:disabled {
             background-color: #ccc !important;
@@ -34,62 +38,100 @@
         }
         .btn-connect { background-color: #28a745; color: white; }
         .btn-disconnect { background-color: #dc3545; color: white; }
-        .btn-send { background-color: #007bff; color: white; }
+        .btn-start { background-color: #007bff; color: white; }
         
         input[type="text"] {
             width: calc(100% - 24px);
             padding: 10px;
-            font-size: 16px;
-            margin: 15px 0;
+            font-size: 14px;
+            margin: 8px 0;
             border: 1px solid #ccc;
             border-radius: 6px;
+            box-sizing: border-box;
+        }
+        #webcam-container {
+            margin: 20px auto;
+            display: flex;
+            justify-content: center;
+        }
+        #webcam-container canvas {
+            border-radius: 8px;
+            border: 2px solid #ddd;
         }
         #status {
-            margin-top: 15px;
+            margin: 12px 0;
             font-weight: bold;
         }
         .disconnected { color: #dc3545; }
         .connected { color: #28a745; }
+        #prediction-result {
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 15px;
+            color: #333;
+        }
+        .label-bar {
+            text-align: left;
+            margin: 6px auto;
+            max-width: 300px;
+            background: #eee;
+            border-radius: 5px;
+            padding: 4px 8px;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <h2>micro:bit Bluetooth Üzenetküldő</h2>
+        <h2>Teachable Machine ➡️ micro:bit</h2>
         
+        <!-- 1. és 2. lépés: Csatlakozás és Bontás -->
         <div>
-            <button id="connectBtn" class="btn-connect" onclick="connect()">Kapcsolódás</button>
-            <button id="disconnectBtn" class="btn-disconnect" onclick="disconnect()" disabled>Kapcsolat bontása</button>
+            <button id="connectBtn" class="btn-connect" onclick="connectBluetooth()">Bluetooth Kapcsolódás</button>
+            <button id="disconnectBtn" class="btn-disconnect" onclick="disconnectBluetooth()" disabled>Kapcsolat bontása</button>
         </div>
-
-        <p id="status" class="disconnected">Nincs kapcsolat</p>
+        <p id="status" class="disconnected">micro:bit nincs csatlakoztatva</p>
 
         <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
 
+        <!-- 3. lépés: Teachable Machine modell linkje -->
         <div>
-            <input type="text" id="messageInput" placeholder="Írj be egy szöveget..." disabled>
-            <br>
-            <button id="sendBtn" class="btn-send" onclick="sendMessage()" disabled>Küldés</button>
+            <label for="modelUrl"><strong>Teachable Machine Modell URL:</strong></label>
+            <input type="text" id="modelUrl" placeholder="pl. https://teachablemachine.withgoogle.com/models/xyz123abc/">
+            <button id="startAiBtn" class="btn-start" onclick="initAI()">Kamera és Modell Indítása</button>
         </div>
+
+        <!-- 5. lépés: Kamera nézet -->
+        <div id="webcam-container"></div>
+        <div id="prediction-result">Várakozás az AI indítására...</div>
+        <div id="label-container"></div>
     </div>
 
     <script>
-        // Nordic Semiconductor UART Service UUID-k
+        // Nordic Semiconductor UART Service és RX Karakterisztika
         const UART_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
-        // 6e400003: A micro:bit RX (fogadó) karakterisztikája – ide kell küldeni a szöveget!
         const UART_RX_CHARACTERISTIC_UUID = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
 
         let bleDevice = null;
         let rxCharacteristic = null;
+        let model = null;
+        let webcam = null;
+        let labelContainer = null;
+        let maxPredictions = 0;
+        let isPredicting = false;
+
+        // Eltároljuk az utoljára elküldött osztálynevet, hogy ne terheljük túl a micro:bitet
+        let lastSentClass = "";
 
         const connectBtn = document.getElementById('connectBtn');
         const disconnectBtn = document.getElementById('disconnectBtn');
-        const sendBtn = document.getElementById('sendBtn');
-        const messageInput = document.getElementById('messageInput');
         const statusText = document.getElementById('status');
+        const predictionResult = document.getElementById('prediction-result');
+        const startAiBtn = document.getElementById('startAiBtn');
 
-        // Kapcsolódás
-        async function connect() {
+        // --- 1. Bluetooth Csatlakozás ---
+        async function connectBluetooth() {
             try {
                 statusText.innerText = "Keresés...";
                 statusText.className = "";
@@ -101,78 +143,152 @@
 
                 bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
 
-                statusText.innerText = "Kapcsolódás a GATT szerverhez...";
+                statusText.innerText = "Csatlakozás...";
                 const server = await bleDevice.gatt.connect();
-
-                statusText.innerText = "UART szolgáltatás lekérése...";
                 const service = await server.getPrimaryService(UART_SERVICE_UUID);
-
-                statusText.innerText = "Karakterisztika beállítása...";
                 rxCharacteristic = await service.getCharacteristic(UART_RX_CHARACTERISTIC_UUID);
 
-                statusText.innerText = "Kapcsolódva!";
+                statusText.innerText = "micro:bit Csatlakoztatva!";
                 statusText.className = "connected";
                 connectBtn.disabled = true;
                 disconnectBtn.disabled = false;
-                sendBtn.disabled = false;
-                messageInput.disabled = false;
 
             } catch (error) {
-                console.error("Hiba a csatlakozáskor: ", error);
-                statusText.innerText = "Sikertelen kapcsolódás.";
+                console.error("Bluetooth hiba: ", error);
+                statusText.innerText = "Sikertelen Bluetooth kapcsolódás.";
                 statusText.className = "disconnected";
             }
         }
 
-        // Kapcsolat bontása
-        function disconnect() {
+        // --- 2. Bluetooth Bontás ---
+        function disconnectBluetooth() {
             if (bleDevice && bleDevice.gatt.connected) {
                 bleDevice.gatt.disconnect();
             }
         }
 
-        // Ha megszakad a kapcsolat
         function onDisconnected() {
-            statusText.innerText = "Nincs kapcsolat";
+            statusText.innerText = "micro:bit nincs csatlakoztatva";
             statusText.className = "disconnected";
             connectBtn.disabled = false;
             disconnectBtn.disabled = true;
-            sendBtn.disabled = true;
-            messageInput.disabled = true;
             rxCharacteristic = null;
+            lastSentClass = "";
         }
 
-        // Üzenet küldése
-        async function sendMessage() {
-            const text = messageInput.value.trim();
-            if (!text || !rxCharacteristic) return;
+        // --- 4. Adatküldés a micro:bit-nek ---
+        async function sendToMicrobit(className) {
+            if (!rxCharacteristic) return;
 
             try {
                 const encoder = new TextEncoder();
-                // A micro:bit Delimiters.NewLine elválasztója \r\n-re reagál
-                const data = encoder.encode(text + "\r\n");
+                // \r\n szükséges a MakeCode NewLine érzékeléséhez
+                const data = encoder.encode(className + "\r\n");
 
-                // Írás nyugtázás nélkül (Write Without Response)
                 if (rxCharacteristic.writeValueWithoutResponse) {
                     await rxCharacteristic.writeValueWithoutResponse(data);
                 } else {
                     await rxCharacteristic.writeValue(data);
                 }
-
-                console.log("Elküldve:", text);
-                messageInput.value = "";
-            } catch (error) {
-                console.error("Hiba a küldéskor:", error);
-                alert("Küldési hiba: " + error.message);
+                console.log("micro:bitnek elküldve:", className);
+            } catch (err) {
+                console.error("Küldési hiba:", err);
             }
         }
 
-        // Enter gombra is küldje el
-        messageInput.addEventListener("keyup", function(event) {
-            if (event.key === "Enter" && !sendBtn.disabled) {
-                sendMessage();
+        // --- 3. és 5. Teachable Machine Modell és Kamera Indítása ---
+        async function initAI() {
+            let url = document.getElementById('modelUrl').value.trim();
+            if (!url) {
+                alert("Kérlek add meg a Teachable Machine modell linkjét!");
+                return;
             }
-        });
+
+            // Biztosítjuk a záró perjelet az URL végén
+            if (!url.endsWith('/')) {
+                url += '/';
+            }
+
+            const modelURL = url + "model.json";
+            const metadataURL = url + "metadata.json";
+
+            startAiBtn.disabled = true;
+            predictionResult.innerText = "Modell betöltése és kamera indítása...";
+
+            try {
+                // Modell betöltése
+                model = await tmImage.load(modelURL, metadataURL);
+                maxPredictions = model.getTotalClasses();
+
+                // Kamera beállítása (224x224 a Teachable Machine alapértelmezett mérete)
+                const flip = true; 
+                webcam = new tmImage.Webcam(224, 224, flip);
+                await webcam.setup(); // Hozzáférés kérése a webkamerához
+                await webcam.play();
+                isPredicting = true;
+                window.requestAnimationFrame(loop);
+
+                // Webkamera canvas elhelyezése a felületen
+                const container = document.getElementById("webcam-container");
+                container.innerHTML = "";
+                container.appendChild(webcam.canvas);
+
+                // Predikciós százalékok megjelenítője
+                labelContainer = document.getElementById("label-container");
+                labelContainer.innerHTML = "";
+                for (let i = 0; i < maxPredictions; i++) {
+                    const div = document.createElement("div");
+                    div.className = "label-bar";
+                    labelContainer.appendChild(div);
+                }
+
+                predictionResult.innerText = "Felismerés folyamatban...";
+            } catch (err) {
+                console.error("Hiba az AI indításakor: ", err);
+                alert("Nem sikerült betölteni a modellt vagy a kamerát. Ellenőrizd a linket és a kamerajogokat!");
+                startAiBtn.disabled = false;
+                predictionResult.innerText = "Hiba történt a betöltéskor.";
+            }
+        }
+
+        // Folyamatos képfrissítés és jóslás
+        async function loop() {
+            if (isPredicting) {
+                webcam.update();
+                await predict();
+                window.requestAnimationFrame(loop);
+            }
+        }
+
+        // Predikció futtatása
+        async function predict() {
+            const prediction = await model.predict(webcam.canvas);
+            
+            let highestProbability = 0;
+            let currentDetectedClass = "";
+
+            // Megkeressük a legvalószínűbb osztályt és kiírjuk a százalékokat
+            for (let i = 0; i < maxPredictions; i++) {
+                const classPrediction = prediction[i].className + ": " + (prediction[i].probability * 100).toFixed(0) + "%";
+                labelContainer.childNodes[i].innerHTML = classPrediction;
+
+                if (prediction[i].probability > highestProbability) {
+                    highestProbability = prediction[i].probability;
+                    currentDetectedClass = prediction[i].className;
+                }
+            }
+
+            // Ha a megbízhatóság magasabb mint 85%
+            if (highestProbability > 0.85) {
+                predictionResult.innerText = "Észlelt osztály: " + currentDetectedClass;
+
+                // Csak akkor küldjük el a micro:bitnek, ha megváltozott az állapot
+                if (currentDetectedClass !== lastSentClass) {
+                    lastSentClass = currentDetectedClass;
+                    sendToMicrobit(currentDetectedClass);
+                }
+            }
+        }
     </script>
 </body>
 </html>
