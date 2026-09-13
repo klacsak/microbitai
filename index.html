@@ -3,31 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teachable Machine ➡️ micro:bit AI Vezérlő</title>
-    <!-- TensorFlow.js és Teachable Machine Image könyvtárak -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <title>Teachable Machine ➡️ micro:bit AI Központ</title>
+    <!-- TensorFlow.js és TM Image & Speech könyvtárak -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.5/dist/teachablemachine-image.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.4.0/dist/speech-commands.min.js"></script>
     <style>
         :root {
             --bg-gradient: linear-gradient(135deg, #eef5fc 0%, #dbe9f6 100%);
             --card-bg: #ffffff;
             --primary-blue: #0284c7;
             --primary-blue-hover: #0369a1;
-            --light-blue: #e0f2fe;
-            --accent-blue: #38bdf8;
             --gray-border: #cbd5e1;
-            --gray-bg: #f1f5f9;
+            --gray-bg: #f8fafc;
             --text-main: #1e293b;
             --text-muted: #64748b;
             --danger: #ef4444;
-            --danger-hover: #dc2626;
             --success: #10b981;
         }
 
         body {
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
-            padding: 25px 15px;
+            padding: 20px 15px;
             background: var(--bg-gradient);
             color: var(--text-main);
             min-height: 100vh;
@@ -41,7 +39,7 @@
             background: var(--card-bg);
             max-width: 520px;
             width: 100%;
-            padding: 28px 20px;
+            padding: 26px 20px;
             border-radius: 20px;
             box-shadow: 0 12px 35px rgba(2, 132, 199, 0.12);
             border: 1px solid rgba(255, 255, 255, 0.8);
@@ -59,7 +57,7 @@
             color: var(--text-muted);
             font-size: 13px;
             margin-top: 0;
-            margin-bottom: 20px;
+            margin-bottom: 18px;
         }
 
         .section-box {
@@ -67,7 +65,7 @@
             border: 1px solid var(--gray-border);
             border-radius: 14px;
             padding: 14px;
-            margin-bottom: 16px;
+            margin-bottom: 14px;
         }
 
         .button-group {
@@ -81,14 +79,14 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            padding: 10px 18px;
-            font-size: 14px;
+            padding: 9px 16px;
+            font-size: 13px;
             font-weight: 600;
             border: none;
             border-radius: 10px;
             cursor: pointer;
             transition: all 0.2s ease-in-out;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
         }
 
         button:active {
@@ -103,43 +101,17 @@
             transform: none;
         }
 
-        .btn-primary {
-            background-color: var(--primary-blue);
-            color: white;
-        }
-        .btn-primary:hover:not(:disabled) {
-            background-color: var(--primary-blue-hover);
-        }
+        .btn-primary { background-color: var(--primary-blue); color: white; }
+        .btn-primary:hover:not(:disabled) { background-color: var(--primary-blue-hover); }
 
-        .btn-disconnect {
-            background-color: #ffffff;
-            color: var(--danger);
-            border: 1px solid #fecaca;
-        }
-        .btn-disconnect:hover:not(:disabled) {
-            background-color: #fee2e2;
-        }
+        .btn-disconnect { background-color: #ffffff; color: var(--danger); border: 1px solid #fecaca; }
+        .btn-disconnect:hover:not(:disabled) { background-color: #fee2e2; }
 
-        .btn-ai {
-            background-color: #0ea5e9;
-            color: white;
-            width: 100%;
-            margin-top: 8px;
-        }
-        .btn-ai:hover:not(:disabled) {
-            background-color: #0284c7;
-        }
+        .btn-ai { background-color: #0ea5e9; color: white; width: 100%; margin-top: 10px; }
+        .btn-ai:hover:not(:disabled) { background-color: #0284c7; }
 
-        .btn-secondary {
-            background-color: #64748b;
-            color: white;
-            font-size: 13px;
-            padding: 8px 14px;
-            margin-top: 8px;
-        }
-        .btn-secondary:hover:not(:disabled) {
-            background-color: #475569;
-        }
+        .btn-secondary { background-color: #64748b; color: white; font-size: 12px; padding: 7px 12px; }
+        .btn-secondary:hover:not(:disabled) { background-color: #475569; }
 
         .status-badge {
             display: inline-block;
@@ -153,21 +125,12 @@
             border: 1px solid var(--gray-border);
         }
 
-        .status-badge.connected {
-            background-color: #ecfdf5;
-            color: var(--success);
-            border-color: #a7f3d0;
-        }
+        .status-badge.connected { background-color: #ecfdf5; color: var(--success); border-color: #a7f3d0; }
+        .status-badge.disconnected { background-color: #fef2f2; color: var(--danger); border-color: #fecaca; }
 
-        .status-badge.disconnected {
-            background-color: #fef2f2;
-            color: var(--danger);
-            border-color: #fecaca;
-        }
-
-        input[type="text"] {
+        input[type="text"], select {
             width: 100%;
-            padding: 10px 12px;
+            padding: 10px;
             font-size: 13px;
             border: 1.5px solid var(--gray-border);
             border-radius: 10px;
@@ -175,30 +138,39 @@
             color: var(--text-main);
             box-sizing: border-box;
             outline: none;
-            transition: border-color 0.2s;
+            margin-bottom: 8px;
         }
 
-        input[type="text"]:focus {
-            border-color: var(--primary-blue);
-            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+        /* Csúszka stílus */
+        .slider-container {
+            margin: 10px 0 4px 0;
+            text-align: left;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-muted);
         }
 
-        /* --- Kamera Konténer és Teljes Képernyő Stílusok --- */
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 4px;
+        }
+
+        input[type="range"] {
+            flex-grow: 1;
+            accent-color: var(--primary-blue);
+            cursor: pointer;
+        }
+
+        /* Kamera keret és Fullscreen */
         #camera-wrapper {
             position: relative;
-            margin: 12px auto 6px auto;
-            display: inline-block;
+            margin: 10px auto;
+            display: none;
             max-width: 100%;
             border-radius: 12px;
             background: #000;
-        }
-
-        #webcam-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 100%;
-            height: 100%;
         }
 
         #webcam-container canvas {
@@ -206,11 +178,9 @@
             border: 3px solid #ffffff;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
             max-width: 100%;
-            height: auto;
             display: block;
         }
 
-        /* Lebegő HUD felirat teljes képernyőhöz */
         #fullscreen-hud {
             display: none;
             position: absolute;
@@ -227,54 +197,33 @@
             background: rgba(15, 23, 42, 0.75);
             backdrop-filter: blur(8px);
             color: #38bdf8;
-            padding: 10px 18px;
-            border-radius: 12px;
-            font-size: 18px;
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 16px;
             font-weight: 700;
             border: 1px solid rgba(255, 255, 255, 0.15);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         }
 
         .fs-action-btn {
             pointer-events: auto;
             background: rgba(15, 23, 42, 0.75);
-            backdrop-filter: blur(8px);
             color: white;
             border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 10px 14px;
-            border-radius: 10px;
-            font-size: 14px;
+            padding: 8px 12px;
+            border-radius: 8px;
             cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
         }
 
-        /* Amikor a kamera konténer teljes képernyős módban van */
-        #camera-wrapper:fullscreen,
-        #camera-wrapper:-webkit-full-screen {
-            width: 100vw !important;
-            height: 100vh !important;
-            background: #000000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 0;
-            margin: 0;
+        #camera-wrapper:fullscreen, #camera-wrapper:-webkit-full-screen {
+            width: 100vw !important; height: 100vh !important;
+            display: flex; align-items: center; justify-content: center;
         }
 
-        #camera-wrapper:fullscreen #webcam-container canvas,
-        #camera-wrapper:-webkit-full-screen #webcam-container canvas {
-            width: auto !important;
-            height: 100vh !important;
-            max-width: 100vw !important;
-            max-height: 100vh !important;
-            object-fit: contain;
-            border: none;
-            border-radius: 0;
-            box-shadow: none;
+        #camera-wrapper:fullscreen canvas, #camera-wrapper:-webkit-full-screen canvas {
+            height: 100vh !important; max-width: 100vw !important; border: none;
         }
 
-        #camera-wrapper:fullscreen #fullscreen-hud,
-        #camera-wrapper:-webkit-full-screen #fullscreen-hud {
+        #camera-wrapper:fullscreen #fullscreen-hud, #camera-wrapper:-webkit-full-screen #fullscreen-hud {
             display: flex;
         }
 
@@ -282,8 +231,8 @@
             font-size: 17px;
             font-weight: 700;
             color: var(--primary-blue-hover);
-            margin: 8px 0 14px 0;
-            min-height: 22px;
+            margin: 10px 0;
+            min-height: 24px;
         }
 
         .label-bar-container {
@@ -295,14 +244,12 @@
         }
 
         .label-bar {
-            text-align: left;
             background: var(--gray-bg);
             border: 1px solid var(--gray-border);
             border-radius: 8px;
             padding: 6px 12px;
             font-size: 13px;
             font-weight: 600;
-            color: var(--text-main);
             display: flex;
             justify-content: space-between;
         }
@@ -311,10 +258,10 @@
 <body>
 
     <div class="container">
-        <h1>micro:bit AI Irányító</h1>
-        <p class="subtitle">Teachable Machine képfelismerés & Bluetooth vezérlés</p>
+        <h1>micro:bit AI Központ</h1>
+        <p class="subtitle">Kép- és Hangfelismerés ➡️ Vezérlés Bluetooth-on</p>
         
-        <!-- Bluetooth szekció -->
+        <!-- 1. Bluetooth szekció -->
         <div class="section-box">
             <div class="button-group">
                 <button id="connectBtn" class="btn-primary" onclick="connectBluetooth()">Bluetooth Kapcsolódás</button>
@@ -325,24 +272,36 @@
             </div>
         </div>
 
-        <!-- Teachable Machine szekció -->
+        <!-- 2. AI Konfiguráció -->
         <div class="section-box">
-            <input type="text" id="modelUrl" placeholder="https://teachablemachine.withgoogle.com/models/...">
-            <button id="startAiBtn" class="btn-ai" onclick="initAI()">Kamera és Modell Indítása</button>
+            <select id="modelType" onchange="onModelTypeChange()">
+                <option value="image">📷 Képi Modell (Kamera)</option>
+                <option value="audio">🎙️ Hang Modell (Mikrofon)</option>
+            </select>
             
-            <div class="button-group" style="margin-top: 6px;">
-                <button id="switchCameraBtn" class="btn-secondary" onclick="switchCamera()" style="display: none;">
-                    📷 Kamera váltása
-                </button>
-                <button id="fullscreenBtn" class="btn-secondary" onclick="toggleFullscreen()" style="display: none;">
-                    ⛶ Teljes képernyő
-                </button>
+            <input type="text" id="modelUrl" placeholder="https://teachablemachine.withgoogle.com/models/...">
+
+            <!-- Döntési küszöb csúszka -->
+            <div class="slider-container">
+                <span>Döntési küszöb (Érzékenység): <strong id="thresholdVal">85%</strong></span>
+                <div class="slider-row">
+                    <span>50%</span>
+                    <input type="range" id="thresholdSlider" min="50" max="98" value="85" oninput="updateThreshold(this.value)">
+                    <span>98%</span>
+                </div>
+            </div>
+
+            <button id="startAiBtn" class="btn-ai" onclick="initAI()">Modell Indítása</button>
+            
+            <!-- Kamera kezelőszervek -->
+            <div id="cameraControls" class="button-group" style="margin-top: 8px; display: none;">
+                <button id="switchCameraBtn" class="btn-secondary" onclick="switchCamera()">📷 Kamera váltása</button>
+                <button id="fullscreenBtn" class="btn-secondary" onclick="toggleFullscreen()">⛶ Teljes képernyő</button>
             </div>
         </div>
 
-        <!-- Kamera és teljes képernyő keret -->
+        <!-- Kamera képkeret -->
         <div id="camera-wrapper">
-            <!-- Lebegő overlay csak teljes képernyőn -->
             <div id="fullscreen-hud">
                 <div id="fullscreen-detected">Osztály: -</div>
                 <div style="display: flex; gap: 8px;">
@@ -350,11 +309,10 @@
                     <button class="fs-action-btn" onclick="toggleFullscreen()">✕ Kilépés</button>
                 </div>
             </div>
-            
             <div id="webcam-container"></div>
         </div>
 
-        <div id="prediction-result">Indítsd el a modellt a predikcióhoz</div>
+        <div id="prediction-result">Válassz modellt és indítsd el!</div>
         <div id="label-container" class="label-bar-container"></div>
     </div>
 
@@ -366,23 +324,39 @@
         let rxCharacteristic = null;
         let model = null;
         let webcam = null;
+        let recognizer = null; // Hangfelismerő
         let labelContainer = null;
         let maxPredictions = 0;
         let isPredicting = false;
         let lastSentClass = "";
         let currentFacingMode = 'user';
+        let confidenceThreshold = 0.85; // Alapértelmezett küszöb
 
         const connectBtn = document.getElementById('connectBtn');
         const disconnectBtn = document.getElementById('disconnectBtn');
         const statusText = document.getElementById('status');
         const predictionResult = document.getElementById('prediction-result');
         const startAiBtn = document.getElementById('startAiBtn');
-        const switchCameraBtn = document.getElementById('switchCameraBtn');
-        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const cameraControls = document.getElementById('cameraControls');
         const cameraWrapper = document.getElementById('camera-wrapper');
         const fullscreenDetected = document.getElementById('fullscreen-detected');
+        const thresholdVal = document.getElementById('thresholdVal');
 
-        // Bluetooth Csatlakozás
+        function updateThreshold(val) {
+            confidenceThreshold = val / 100;
+            thresholdVal.innerText = val + "%";
+        }
+
+        function onModelTypeChange() {
+            const type = document.getElementById('modelType').value;
+            // Ha épp futna egy kamera vagy mikrofon, megállítjuk
+            stopCurrentAI();
+            cameraControls.style.display = "none";
+            cameraWrapper.style.display = "none";
+            predictionResult.innerText = "Modell típus módosítva. Add meg a linket!";
+        }
+
+        // --- Bluetooth kapcsolat ---
         async function connectBluetooth() {
             try {
                 statusText.innerText = "Keresés...";
@@ -404,7 +378,6 @@
                 statusText.className = "status-badge connected";
                 connectBtn.disabled = true;
                 disconnectBtn.disabled = false;
-
             } catch (error) {
                 console.error("Bluetooth hiba: ", error);
                 statusText.innerText = "Sikertelen kapcsolódás";
@@ -413,9 +386,7 @@
         }
 
         function disconnectBluetooth() {
-            if (bleDevice && bleDevice.gatt.connected) {
-                bleDevice.gatt.disconnect();
-            }
+            if (bleDevice && bleDevice.gatt.connected) bleDevice.gatt.disconnect();
         }
 
         function onDisconnected() {
@@ -429,11 +400,9 @@
 
         async function sendToMicrobit(className) {
             if (!rxCharacteristic) return;
-
             try {
                 const encoder = new TextEncoder();
                 const data = encoder.encode(className + "\n");
-
                 if (rxCharacteristic.writeValueWithoutResponse) {
                     await rxCharacteristic.writeValueWithoutResponse(data);
                 } else {
@@ -445,141 +414,207 @@
             }
         }
 
-        async function setupWebcam(facingMode) {
-            const flip = (facingMode === 'user');
-            webcam = new tmImage.Webcam(224, 224, flip);
-
-            await webcam.setup({ facingMode: facingMode });
-            await webcam.play();
-
-            const container = document.getElementById("webcam-container");
-            container.innerHTML = "";
-            container.appendChild(webcam.canvas);
+        // --- Korábbi folyamatok leállítása ---
+        function stopCurrentAI() {
+            isPredicting = false;
+            if (webcam) {
+                try {
+                    if (webcam.webcam && webcam.webcam.srcObject) {
+                        webcam.webcam.srcObject.getTracks().forEach(t => t.stop());
+                    }
+                    webcam.stop();
+                } catch(e){}
+                webcam = null;
+            }
+            if (recognizer) {
+                try { recognizer.stopListening(); } catch(e){}
+                recognizer = null;
+            }
+            startAiBtn.disabled = false;
         }
 
+        // --- AI Főindító ---
         async function initAI() {
             let url = document.getElementById('modelUrl').value.trim();
             if (!url) {
                 alert("Kérlek add meg a Teachable Machine modell linkjét!");
                 return;
             }
+            if (!url.endsWith('/')) url += '/';
 
-            if (!url.endsWith('/')) {
-                url += '/';
-            }
-
-            const modelURL = url + "model.json";
-            const metadataURL = url + "metadata.json";
-
+            stopCurrentAI();
             startAiBtn.disabled = true;
-            predictionResult.innerText = "Modell betöltése és kamera indítása...";
+            predictionResult.innerText = "Modell betöltése...";
+
+            const modelType = document.getElementById('modelType').value;
 
             try {
-                model = await tmImage.load(modelURL, metadataURL);
-                maxPredictions = model.getTotalClasses();
-
-                currentFacingMode = 'user';
-                await setupWebcam(currentFacingMode);
-
-                isPredicting = true;
-                window.requestAnimationFrame(loop);
-
-                labelContainer = document.getElementById("label-container");
-                labelContainer.innerHTML = "";
-                for (let i = 0; i < maxPredictions; i++) {
-                    const div = document.createElement("div");
-                    div.className = "label-bar";
-                    labelContainer.appendChild(div);
+                if (modelType === 'image') {
+                    await initImageModel(url);
+                } else {
+                    await initAudioModel(url);
                 }
-
-                predictionResult.innerText = "Felismerés folyamatban...";
-                switchCameraBtn.style.display = "inline-flex";
-                fullscreenBtn.style.display = "inline-flex";
             } catch (err) {
-                console.error("AI hiba: ", err);
-                alert("Nem sikerült betölteni a modellt vagy a kamerát. Ellenőrizd a linket!");
+                console.error("AI Betöltési Hiba: ", err);
+                alert("Hiba a betöltéskor! Ellenőrizd a linket, és hogy engedélyezted-e a kamerát/mikrofont.");
                 startAiBtn.disabled = false;
                 predictionResult.innerText = "Hiba történt a betöltéskor.";
             }
         }
 
+        // --- KÉP MODELL LOGIKA ---
+        async function initImageModel(url) {
+            const modelURL = url + "model.json";
+            const metadataURL = url + "metadata.json";
+
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+
+            currentFacingMode = 'user';
+            await setupWebcam(currentFacingMode);
+
+            isPredicting = true;
+            window.requestAnimationFrame(imageLoop);
+
+            setupLabelBars(model.getClassLabels());
+            cameraWrapper.style.display = "inline-block";
+            cameraControls.style.display = "flex";
+            predictionResult.innerText = "Kamera aktív - Elemzés...";
+        }
+
+        async function setupWebcam(facingMode) {
+            const flip = (facingMode === 'user');
+            webcam = new tmImage.Webcam(224, 224, flip);
+            await webcam.setup({ facingMode: facingMode });
+            await webcam.play();
+            const container = document.getElementById("webcam-container");
+            container.innerHTML = "";
+            container.appendChild(webcam.canvas);
+        }
+
+        async function imageLoop() {
+            if (isPredicting && webcam) {
+                webcam.update();
+                await predictImage();
+                window.requestAnimationFrame(imageLoop);
+            }
+        }
+
+        async function predictImage() {
+            const prediction = await model.predict(webcam.canvas);
+            evaluatePredictions(prediction);
+        }
+
         async function switchCamera() {
             if (!webcam) return;
-
-            switchCameraBtn.disabled = true;
+            const btn = document.getElementById('switchCameraBtn');
+            btn.disabled = true;
             isPredicting = false;
-            predictionResult.innerText = "Kameraváltás...";
-
             try {
                 if (webcam.webcam && webcam.webcam.srcObject) {
-                    webcam.webcam.srcObject.getTracks().forEach(track => track.stop());
+                    webcam.webcam.srcObject.getTracks().forEach(t => t.stop());
                 }
                 webcam.stop();
-
                 currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
                 await setupWebcam(currentFacingMode);
-
                 isPredicting = true;
-                window.requestAnimationFrame(loop);
-                predictionResult.innerText = "Felismerés folyamatban...";
-            } catch (err) {
-                console.error("Kameraváltási hiba: ", err);
-                alert("Nem sikerült a kamerát váltani.");
+                window.requestAnimationFrame(imageLoop);
+            } catch(e) {
+                alert("Nem sikerült kamerát váltani.");
             } finally {
-                switchCameraBtn.disabled = false;
+                btn.disabled = false;
             }
         }
 
-        // --- Teljes képernyő kezelése ---
         function toggleFullscreen() {
             if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-                if (cameraWrapper.requestFullscreen) {
-                    cameraWrapper.requestFullscreen();
-                } else if (cameraWrapper.webkitRequestFullscreen) {
-                    cameraWrapper.webkitRequestFullscreen();
-                }
+                if (cameraWrapper.requestFullscreen) cameraWrapper.requestFullscreen();
+                else if (cameraWrapper.webkitRequestFullscreen) cameraWrapper.webkitRequestFullscreen();
             } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                } else if (document.webkitExitFullscreen) {
-                    document.webkitExitFullscreen();
-                }
+                if (document.exitFullscreen) document.exitFullscreen();
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
             }
         }
 
-        async function loop() {
-            if (isPredicting) {
-                webcam.update();
-                await predict();
-                window.requestAnimationFrame(loop);
+        // --- HANG MODELL LOGIKA ---
+        async function initAudioModel(url) {
+            const checkpointURL = url + "model.json";
+            const metadataURL = url + "metadata.json";
+
+            recognizer = speechCommands.create(
+                "BROWSER_FFT",
+                undefined,
+                checkpointURL,
+                metadataURL
+            );
+
+            await recognizer.ensureModelLoaded();
+            const words = recognizer.wordLabels();
+            maxPredictions = words.length;
+
+            setupLabelBars(words);
+            cameraWrapper.style.display = "none";
+            cameraControls.style.display = "none";
+            predictionResult.innerText = "Mikrofon aktív - Figyelés...";
+
+            recognizer.listen(result => {
+                const predictions = [];
+                for (let i = 0; i < words.length; i++) {
+                    predictions.push({
+                        className: words[i],
+                        probability: result.scores[i]
+                    });
+                }
+                evaluatePredictions(predictions);
+            }, {
+                includeSpectrogram: false,
+                probabilityThreshold: 0.50,
+                overlapFactor: 0.50
+            });
+        }
+
+        // --- KÖZÖS KIÉRTÉKELÉS & CSÚSZKA ALAPJÁN DÖNTÉS ---
+        function setupLabelBars(labels) {
+            labelContainer = document.getElementById("label-container");
+            labelContainer.innerHTML = "";
+            for (let i = 0; i < labels.length; i++) {
+                const div = document.createElement("div");
+                div.className = "label-bar";
+                labelContainer.appendChild(div);
             }
         }
 
-        async function predict() {
-            const prediction = await model.predict(webcam.canvas);
-            let highestProbability = 0;
-            let currentDetectedClass = "";
+        function evaluatePredictions(predictions) {
+            let highestProb = 0;
+            let bestClass = "";
 
-            for (let i = 0; i < maxPredictions; i++) {
-                const className = prediction[i].className;
-                const probability = (prediction[i].probability * 100).toFixed(0);
-                
-                labelContainer.childNodes[i].innerHTML = `<span>${className}</span> <span>${probability}%</span>`;
+            for (let i = 0; i < predictions.length; i++) {
+                const name = predictions[i].className;
+                const prob = predictions[i].probability;
+                const percent = (prob * 100).toFixed(0);
 
-                if (prediction[i].probability > highestProbability) {
-                    highestProbability = prediction[i].probability;
-                    currentDetectedClass = className;
+                if (labelContainer.childNodes[i]) {
+                    labelContainer.childNodes[i].innerHTML = `<span>${name}</span> <span>${percent}%</span>`;
+                }
+
+                // A háttérzajt kihagyjuk a kiértékelésből, ha hangmodellről van szó
+                if (name.toLowerCase() !== "background noise") {
+                    if (prob > highestProb) {
+                        highestProb = prob;
+                        bestClass = name;
+                    }
                 }
             }
 
-            if (highestProbability > 0.85) {
-                const displayText = `Észlelt osztály: ${currentDetectedClass} (${(highestProbability * 100).toFixed(0)}%)`;
-                predictionResult.innerText = displayText;
-                fullscreenDetected.innerText = displayText;
+            // Döntési küszöb vizsgálata
+            if (highestProb >= confidenceThreshold) {
+                const text = `Észlelve: ${bestClass} (${(highestProb * 100).toFixed(0)}%)`;
+                predictionResult.innerText = text;
+                fullscreenDetected.innerText = text;
 
-                if (currentDetectedClass !== lastSentClass) {
-                    lastSentClass = currentDetectedClass;
-                    sendToMicrobit(currentDetectedClass);
+                if (bestClass !== lastSentClass) {
+                    lastSentClass = bestClass;
+                    sendToMicrobit(bestClass);
                 }
             }
         }
