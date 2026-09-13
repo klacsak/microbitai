@@ -183,7 +183,7 @@
             try {
                 const encoder = new TextEncoder();
                 // \r\n szükséges a MakeCode NewLine érzékeléséhez
-                const data = encoder.encode(className + "\r\n");
+                const data = encoder.encode(className + "\n");
 
                 if (rxCharacteristic.writeValueWithoutResponse) {
                     await rxCharacteristic.writeValueWithoutResponse(data);
