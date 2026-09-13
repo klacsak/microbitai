@@ -27,7 +27,7 @@
         body {
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
             margin: 0;
-            padding: 30px 15px;
+            padding: 25px 15px;
             background: var(--bg-gradient);
             color: var(--text-main);
             min-height: 100vh;
@@ -41,7 +41,7 @@
             background: var(--card-bg);
             max-width: 520px;
             width: 100%;
-            padding: 32px 24px;
+            padding: 28px 20px;
             border-radius: 20px;
             box-shadow: 0 12px 35px rgba(2, 132, 199, 0.12);
             border: 1px solid rgba(255, 255, 255, 0.8);
@@ -49,25 +49,25 @@
         }
 
         h1 {
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 700;
             color: var(--primary-blue);
-            margin: 0 0 8px 0;
+            margin: 0 0 6px 0;
         }
 
         p.subtitle {
             color: var(--text-muted);
-            font-size: 14px;
+            font-size: 13px;
             margin-top: 0;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
         }
 
         .section-box {
             background-color: var(--gray-bg);
             border: 1px solid var(--gray-border);
             border-radius: 14px;
-            padding: 16px;
-            margin-bottom: 20px;
+            padding: 14px;
+            margin-bottom: 16px;
         }
 
         .button-group {
@@ -81,7 +81,7 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            padding: 10px 20px;
+            padding: 10px 18px;
             font-size: 14px;
             font-weight: 600;
             border: none;
@@ -124,18 +124,29 @@
             background-color: #0ea5e9;
             color: white;
             width: 100%;
-            margin-top: 10px;
+            margin-top: 8px;
         }
         .btn-ai:hover:not(:disabled) {
             background-color: #0284c7;
         }
 
+        .btn-switch {
+            background-color: #64748b;
+            color: white;
+            font-size: 13px;
+            padding: 8px 14px;
+            margin-top: 10px;
+        }
+        .btn-switch:hover:not(:disabled) {
+            background-color: #475569;
+        }
+
         .status-badge {
             display: inline-block;
-            margin-top: 12px;
-            padding: 5px 14px;
+            margin-top: 10px;
+            padding: 4px 12px;
             border-radius: 20px;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             background-color: #f1f5f9;
             color: var(--text-muted);
@@ -156,8 +167,8 @@
 
         input[type="text"] {
             width: 100%;
-            padding: 11px 14px;
-            font-size: 14px;
+            padding: 10px 12px;
+            font-size: 13px;
             border: 1.5px solid var(--gray-border);
             border-radius: 10px;
             background: #ffffff;
@@ -173,7 +184,7 @@
         }
 
         #webcam-container {
-            margin: 18px auto;
+            margin: 12px auto 6px auto;
             display: flex;
             justify-content: center;
         }
@@ -187,11 +198,11 @@
         }
 
         #prediction-result {
-            font-size: 18px;
+            font-size: 17px;
             font-weight: 700;
             color: var(--primary-blue-hover);
-            margin: 10px 0 16px 0;
-            min-height: 24px;
+            margin: 8px 0 14px 0;
+            min-height: 22px;
         }
 
         .label-bar-container {
@@ -199,7 +210,7 @@
             margin: 0 auto;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
         }
 
         .label-bar {
@@ -237,6 +248,11 @@
         <div class="section-box">
             <input type="text" id="modelUrl" placeholder="https://teachablemachine.withgoogle.com/models/...">
             <button id="startAiBtn" class="btn-ai" onclick="initAI()">Kamera és Modell Indítása</button>
+            <br>
+            <!-- Kameraváltó gomb -->
+            <button id="switchCameraBtn" class="btn-switch" onclick="switchCamera()" style="display: none;">
+                📷 Kamera váltása (Előlapi / Hátlapi)
+            </button>
         </div>
 
         <!-- Kamera és predikciók -->
@@ -258,13 +274,17 @@
         let isPredicting = false;
         let lastSentClass = "";
 
+        // Kamera állapot: 'user' (előlapi) vagy 'environment' (hátlapi)
+        let currentFacingMode = 'user';
+
         const connectBtn = document.getElementById('connectBtn');
         const disconnectBtn = document.getElementById('disconnectBtn');
         const statusText = document.getElementById('status');
         const predictionResult = document.getElementById('prediction-result');
         const startAiBtn = document.getElementById('startAiBtn');
+        const switchCameraBtn = document.getElementById('switchCameraBtn');
 
-        // Bluetooth Csatlakozás (Android és Asztali gépen egyaránt működő)
+        // Bluetooth Csatlakozás
         async function connectBluetooth() {
             try {
                 statusText.innerText = "Keresés...";
@@ -316,7 +336,6 @@
 
             try {
                 const encoder = new TextEncoder();
-                // A \n elválasztót használjuk a felesleges \r karaktermaradványok elkerülésére
                 const data = encoder.encode(className + "\n");
 
                 if (rxCharacteristic.writeValueWithoutResponse) {
@@ -330,7 +349,22 @@
             }
         }
 
-        // Teachable Machine és Webkamera indítása
+        // Kamerabeállítás és indítás segédfüggvény
+        async function setupWebcam(facingMode) {
+            // Előlapi kamera esetén tükrözünk, hátlapinál nem
+            const flip = (facingMode === 'user');
+            webcam = new tmImage.Webcam(224, 224, flip);
+
+            // A facingMode megszorítás átadása a setup-nak
+            await webcam.setup({ facingMode: facingMode });
+            await webcam.play();
+
+            const container = document.getElementById("webcam-container");
+            container.innerHTML = "";
+            container.appendChild(webcam.canvas);
+        }
+
+        // AI és Kamera indítása
         async function initAI() {
             let url = document.getElementById('modelUrl').value.trim();
             if (!url) {
@@ -352,17 +386,14 @@
                 model = await tmImage.load(modelURL, metadataURL);
                 maxPredictions = model.getTotalClasses();
 
-                const flip = true; 
-                webcam = new tmImage.Webcam(224, 224, flip);
-                await webcam.setup();
-                await webcam.play();
+                // Alapértelmezetten előlapi kamerával indítunk
+                currentFacingMode = 'user';
+                await setupWebcam(currentFacingMode);
+
                 isPredicting = true;
                 window.requestAnimationFrame(loop);
 
-                const container = document.getElementById("webcam-container");
-                container.innerHTML = "";
-                container.appendChild(webcam.canvas);
-
+                // Címkék konténere
                 labelContainer = document.getElementById("label-container");
                 labelContainer.innerHTML = "";
                 for (let i = 0; i < maxPredictions; i++) {
@@ -372,11 +403,45 @@
                 }
 
                 predictionResult.innerText = "Felismerés folyamatban...";
+                switchCameraBtn.style.display = "inline-flex"; // Gomb megjelenítése
             } catch (err) {
                 console.error("AI hiba: ", err);
                 alert("Nem sikerült betölteni a modellt vagy a kamerát. Ellenőrizd a linket!");
                 startAiBtn.disabled = false;
                 predictionResult.innerText = "Hiba történt a betöltéskor.";
+            }
+        }
+
+        // Kamera váltása (user <-> environment)
+        async function switchCamera() {
+            if (!webcam) return;
+
+            switchCameraBtn.disabled = true;
+            isPredicting = false; // Ideiglenesen leállítjuk a predikciós ciklust
+            predictionResult.innerText = "Kameraváltás folyamatban...";
+
+            try {
+                // Korábbi videófolyamat leállítása
+                if (webcam.webcam && webcam.webcam.srcObject) {
+                    webcam.webcam.srcObject.getTracks().forEach(track => track.stop());
+                }
+                webcam.stop();
+
+                // Állapot megfordítása
+                currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
+
+                // Új kamera beállítása
+                await setupWebcam(currentFacingMode);
+
+                // Predikciós ciklus újraindítása
+                isPredicting = true;
+                window.requestAnimationFrame(loop);
+                predictionResult.innerText = "Felismerés folyamatban...";
+            } catch (err) {
+                console.error("Kameraváltási hiba: ", err);
+                alert("Nem sikerült a kamerát váltani. Lehet, hogy a készülék nem engedélyezi a hátlapi kamerát.");
+            } finally {
+                switchCameraBtn.disabled = false;
             }
         }
 
@@ -405,7 +470,7 @@
                 }
             }
 
-            // Ha az AI bizonyossága meghaladja a 85%-ot
+            // Ha a megbízhatóság meghaladja a 85%-ot
             if (highestProbability > 0.85) {
                 predictionResult.innerText = "Észlelt osztály: " + currentDetectedClass;
 
