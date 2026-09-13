@@ -3,113 +3,249 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teachable Machine + micro:bit AI Vezérlő</title>
+    <title>Teachable Machine ➡️ micro:bit AI Vezérlő</title>
     <!-- TensorFlow.js és Teachable Machine Image könyvtárak -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
     <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #eef5fc 0%, #dbe9f6 100%);
+            --card-bg: #ffffff;
+            --primary-blue: #0284c7;
+            --primary-blue-hover: #0369a1;
+            --light-blue: #e0f2fe;
+            --accent-blue: #38bdf8;
+            --gray-border: #cbd5e1;
+            --gray-bg: #f1f5f9;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --danger: #ef4444;
+            --danger-hover: #dc2626;
+            --success: #10b981;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            max-width: 600px;
-            margin: 30px auto;
-            padding: 20px;
-            text-align: center;
-            background-color: #f4f4f9;
-        }
-        .card {
-            background: white;
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        button {
-            padding: 10px 18px;
-            font-size: 15px;
-            margin: 6px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            transition: 0.2s;
-        }
-        button:disabled {
-            background-color: #ccc !important;
-            cursor: not-allowed;
-        }
-        .btn-connect { background-color: #28a745; color: white; }
-        .btn-disconnect { background-color: #dc3545; color: white; }
-        .btn-start { background-color: #007bff; color: white; }
-        
-        input[type="text"] {
-            width: calc(100% - 24px);
-            padding: 10px;
-            font-size: 14px;
-            margin: 8px 0;
-            border: 1px solid #ccc;
-            border-radius: 6px;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            padding: 30px 15px;
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             box-sizing: border-box;
         }
+
+        .container {
+            background: var(--card-bg);
+            max-width: 520px;
+            width: 100%;
+            padding: 32px 24px;
+            border-radius: 20px;
+            box-shadow: 0 12px 35px rgba(2, 132, 199, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary-blue);
+            margin: 0 0 8px 0;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 14px;
+            margin-top: 0;
+            margin-bottom: 24px;
+        }
+
+        .section-box {
+            background-color: var(--gray-bg);
+            border: 1px solid var(--gray-border);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 20px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        button:disabled {
+            background-color: #cbd5e1 !important;
+            color: #94a3b8 !important;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: none;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-blue);
+            color: white;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background-color: var(--primary-blue-hover);
+        }
+
+        .btn-disconnect {
+            background-color: #ffffff;
+            color: var(--danger);
+            border: 1px solid #fecaca;
+        }
+        .btn-disconnect:hover:not(:disabled) {
+            background-color: #fee2e2;
+        }
+
+        .btn-ai {
+            background-color: #0ea5e9;
+            color: white;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .btn-ai:hover:not(:disabled) {
+            background-color: #0284c7;
+        }
+
+        .status-badge {
+            display: inline-block;
+            margin-top: 12px;
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            background-color: #f1f5f9;
+            color: var(--text-muted);
+            border: 1px solid var(--gray-border);
+        }
+
+        .status-badge.connected {
+            background-color: #ecfdf5;
+            color: var(--success);
+            border-color: #a7f3d0;
+        }
+
+        .status-badge.disconnected {
+            background-color: #fef2f2;
+            color: var(--danger);
+            border-color: #fecaca;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 11px 14px;
+            font-size: 14px;
+            border: 1.5px solid var(--gray-border);
+            border-radius: 10px;
+            background: #ffffff;
+            color: var(--text-main);
+            box-sizing: border-box;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.15);
+        }
+
         #webcam-container {
-            margin: 20px auto;
+            margin: 18px auto;
             display: flex;
             justify-content: center;
         }
+
         #webcam-container canvas {
-            border-radius: 8px;
-            border: 2px solid #ddd;
+            border-radius: 12px;
+            border: 3px solid #ffffff;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            max-width: 100%;
+            height: auto;
         }
-        #status {
-            margin: 12px 0;
-            font-weight: bold;
-        }
-        .disconnected { color: #dc3545; }
-        .connected { color: #28a745; }
+
         #prediction-result {
-            font-size: 20px;
-            font-weight: bold;
-            margin-top: 15px;
-            color: #333;
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--primary-blue-hover);
+            margin: 10px 0 16px 0;
+            min-height: 24px;
         }
+
+        .label-bar-container {
+            max-width: 320px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
         .label-bar {
             text-align: left;
-            margin: 6px auto;
-            max-width: 300px;
-            background: #eee;
-            border-radius: 5px;
-            padding: 4px 8px;
-            font-size: 14px;
+            background: var(--gray-bg);
+            border: 1px solid var(--gray-border);
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-main);
+            display: flex;
+            justify-content: space-between;
         }
     </style>
 </head>
 <body>
 
-    <div class="card">
-        <h2>Teachable Machine ➡️ micro:bit</h2>
+    <div class="container">
+        <h1>micro:bit AI Irányító</h1>
+        <p class="subtitle">Teachable Machine képfelismerés & Bluetooth vezérlés</p>
         
-        <!-- 1. és 2. lépés: Csatlakozás és Bontás -->
-        <div>
-            <button id="connectBtn" class="btn-connect" onclick="connectBluetooth()">Bluetooth Kapcsolódás</button>
-            <button id="disconnectBtn" class="btn-disconnect" onclick="disconnectBluetooth()" disabled>Kapcsolat bontása</button>
-        </div>
-        <p id="status" class="disconnected">micro:bit nincs csatlakoztatva</p>
-
-        <hr style="margin: 20px 0; border: 0; border-top: 1px solid #eee;">
-
-        <!-- 3. lépés: Teachable Machine modell linkje -->
-        <div>
-            <label for="modelUrl"><strong>Teachable Machine Modell URL:</strong></label>
-            <input type="text" id="modelUrl" placeholder="pl. https://teachablemachine.withgoogle.com/models/xyz123abc/">
-            <button id="startAiBtn" class="btn-start" onclick="initAI()">Kamera és Modell Indítása</button>
+        <!-- Bluetooth szekció -->
+        <div class="section-box">
+            <div class="button-group">
+                <button id="connectBtn" class="btn-primary" onclick="connectBluetooth()">Bluetooth Kapcsolódás</button>
+                <button id="disconnectBtn" class="btn-disconnect" onclick="disconnectBluetooth()" disabled>Bontás</button>
+            </div>
+            <div>
+                <span id="status" class="status-badge disconnected">micro:bit nincs csatlakoztatva</span>
+            </div>
         </div>
 
-        <!-- 5. lépés: Kamera nézet -->
+        <!-- Teachable Machine szekció -->
+        <div class="section-box">
+            <input type="text" id="modelUrl" placeholder="https://teachablemachine.withgoogle.com/models/...">
+            <button id="startAiBtn" class="btn-ai" onclick="initAI()">Kamera és Modell Indítása</button>
+        </div>
+
+        <!-- Kamera és predikciók -->
         <div id="webcam-container"></div>
-        <div id="prediction-result">Várakozás az AI indítására...</div>
-        <div id="label-container"></div>
+        <div id="prediction-result">Indítsd el a modellt a predikcióhoz</div>
+        <div id="label-container" class="label-bar-container"></div>
     </div>
 
     <script>
-        // Nordic Semiconductor UART Service és RX Karakterisztika
         const UART_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
         const UART_RX_CHARACTERISTIC_UUID = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
 
@@ -120,8 +256,6 @@
         let labelContainer = null;
         let maxPredictions = 0;
         let isPredicting = false;
-
-        // Eltároljuk az utoljára elküldött osztálynevet, hogy ne terheljük túl a micro:bitet
         let lastSentClass = "";
 
         const connectBtn = document.getElementById('connectBtn');
@@ -130,11 +264,11 @@
         const predictionResult = document.getElementById('prediction-result');
         const startAiBtn = document.getElementById('startAiBtn');
 
-        // --- 1. Bluetooth Csatlakozás ---
+        // Bluetooth Csatlakozás (Android és Asztali gépen egyaránt működő)
         async function connectBluetooth() {
             try {
                 statusText.innerText = "Keresés...";
-                statusText.className = "";
+                statusText.className = "status-badge";
 
                 bleDevice = await navigator.bluetooth.requestDevice({
                     filters: [{ namePrefix: 'BBC micro:bit' }],
@@ -148,19 +282,19 @@
                 const service = await server.getPrimaryService(UART_SERVICE_UUID);
                 rxCharacteristic = await service.getCharacteristic(UART_RX_CHARACTERISTIC_UUID);
 
-                statusText.innerText = "micro:bit Csatlakoztatva!";
-                statusText.className = "connected";
+                statusText.innerText = "micro:bit csatlakoztatva";
+                statusText.className = "status-badge connected";
                 connectBtn.disabled = true;
                 disconnectBtn.disabled = false;
 
             } catch (error) {
                 console.error("Bluetooth hiba: ", error);
-                statusText.innerText = "Sikertelen Bluetooth kapcsolódás.";
-                statusText.className = "disconnected";
+                statusText.innerText = "Sikertelen kapcsolódás";
+                statusText.className = "status-badge disconnected";
             }
         }
 
-        // --- 2. Bluetooth Bontás ---
+        // Bluetooth Bontás
         function disconnectBluetooth() {
             if (bleDevice && bleDevice.gatt.connected) {
                 bleDevice.gatt.disconnect();
@@ -169,20 +303,20 @@
 
         function onDisconnected() {
             statusText.innerText = "micro:bit nincs csatlakoztatva";
-            statusText.className = "disconnected";
+            statusText.className = "status-badge disconnected";
             connectBtn.disabled = false;
             disconnectBtn.disabled = true;
             rxCharacteristic = null;
             lastSentClass = "";
         }
 
-        // --- 4. Adatküldés a micro:bit-nek ---
+        // Adatküldés a micro:bit-nek
         async function sendToMicrobit(className) {
             if (!rxCharacteristic) return;
 
             try {
                 const encoder = new TextEncoder();
-                // \r\n szükséges a MakeCode NewLine érzékeléséhez
+                // A \n elválasztót használjuk a felesleges \r karaktermaradványok elkerülésére
                 const data = encoder.encode(className + "\n");
 
                 if (rxCharacteristic.writeValueWithoutResponse) {
@@ -196,7 +330,7 @@
             }
         }
 
-        // --- 3. és 5. Teachable Machine Modell és Kamera Indítása ---
+        // Teachable Machine és Webkamera indítása
         async function initAI() {
             let url = document.getElementById('modelUrl').value.trim();
             if (!url) {
@@ -204,7 +338,6 @@
                 return;
             }
 
-            // Biztosítjuk a záró perjelet az URL végén
             if (!url.endsWith('/')) {
                 url += '/';
             }
@@ -216,24 +349,20 @@
             predictionResult.innerText = "Modell betöltése és kamera indítása...";
 
             try {
-                // Modell betöltése
                 model = await tmImage.load(modelURL, metadataURL);
                 maxPredictions = model.getTotalClasses();
 
-                // Kamera beállítása (224x224 a Teachable Machine alapértelmezett mérete)
                 const flip = true; 
                 webcam = new tmImage.Webcam(224, 224, flip);
-                await webcam.setup(); // Hozzáférés kérése a webkamerához
+                await webcam.setup();
                 await webcam.play();
                 isPredicting = true;
                 window.requestAnimationFrame(loop);
 
-                // Webkamera canvas elhelyezése a felületen
                 const container = document.getElementById("webcam-container");
                 container.innerHTML = "";
                 container.appendChild(webcam.canvas);
 
-                // Predikciós százalékok megjelenítője
                 labelContainer = document.getElementById("label-container");
                 labelContainer.innerHTML = "";
                 for (let i = 0; i < maxPredictions; i++) {
@@ -244,14 +373,13 @@
 
                 predictionResult.innerText = "Felismerés folyamatban...";
             } catch (err) {
-                console.error("Hiba az AI indításakor: ", err);
-                alert("Nem sikerült betölteni a modellt vagy a kamerát. Ellenőrizd a linket és a kamerajogokat!");
+                console.error("AI hiba: ", err);
+                alert("Nem sikerült betölteni a modellt vagy a kamerát. Ellenőrizd a linket!");
                 startAiBtn.disabled = false;
                 predictionResult.innerText = "Hiba történt a betöltéskor.";
             }
         }
 
-        // Folyamatos képfrissítés és jóslás
         async function loop() {
             if (isPredicting) {
                 webcam.update();
@@ -260,29 +388,27 @@
             }
         }
 
-        // Predikció futtatása
         async function predict() {
             const prediction = await model.predict(webcam.canvas);
-            
             let highestProbability = 0;
             let currentDetectedClass = "";
 
-            // Megkeressük a legvalószínűbb osztályt és kiírjuk a százalékokat
             for (let i = 0; i < maxPredictions; i++) {
-                const classPrediction = prediction[i].className + ": " + (prediction[i].probability * 100).toFixed(0) + "%";
-                labelContainer.childNodes[i].innerHTML = classPrediction;
+                const className = prediction[i].className;
+                const probability = (prediction[i].probability * 100).toFixed(0);
+                
+                labelContainer.childNodes[i].innerHTML = `<span>${className}</span> <span>${probability}%</span>`;
 
                 if (prediction[i].probability > highestProbability) {
                     highestProbability = prediction[i].probability;
-                    currentDetectedClass = prediction[i].className;
+                    currentDetectedClass = className;
                 }
             }
 
-            // Ha a megbízhatóság magasabb mint 85%
+            // Ha az AI bizonyossága meghaladja a 85%-ot
             if (highestProbability > 0.85) {
                 predictionResult.innerText = "Észlelt osztály: " + currentDetectedClass;
 
-                // Csak akkor küldjük el a micro:bitnek, ha megváltozott az állapot
                 if (currentDetectedClass !== lastSentClass) {
                     lastSentClass = currentDetectedClass;
                     sendToMicrobit(currentDetectedClass);
