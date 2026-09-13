@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teachable Machine ➡️ micro:bit AI Központ</title>
+    <title>Teachable Machine ➡️ micro:bit</title>
     <!-- TensorFlow.js és TM Image & Speech könyvtárak -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.5/dist/teachablemachine-image.min.js"></script>
@@ -60,20 +60,6 @@
             text-align: center;
         }
 
-        .header-icon {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            width: 48px;
-            height: 48px;
-            border-radius: 14px;
-            background: var(--primary-gradient);
-            color: white;
-            font-size: 22px;
-            margin-bottom: 12px;
-            box-shadow: var(--shadow-button);
-        }
-
         h1 {
             font-size: 24px;
             font-weight: 800;
@@ -109,7 +95,7 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            gap: 8px;
             padding: 10px 18px;
             font-size: 13.5px;
             font-weight: 600;
@@ -175,6 +161,15 @@
         .btn-secondary:hover:not(:disabled) {
             background: #e2e8f0;
             border-color: #94a3b8;
+        }
+
+        /* Bluetooth SVG ikon méretezése */
+        .bt-icon {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+            display: inline-block;
+            vertical-align: middle;
         }
 
         /* Állapotjelző Badge */
@@ -345,7 +340,7 @@
             letter-spacing: -0.3px;
         }
 
-        /* Animált sávok a predikciókhoz */
+        /* Animált sávok */
         .label-bar-container {
             max-width: 360px;
             margin: 0 auto;
@@ -398,15 +393,18 @@
 <body>
 
     <div class="container">
-        <div class="header-icon">⚡</div>
-        <h1>micro:bit AI Központ</h1>
+        <h1>micro:bit AI</h1>
         <p class="subtitle">Valós idejű kép- és hangfelismerés ➡️ micro:bit Bluetooth vezérlés</p>
         
         <!-- 1. Bluetooth panel -->
         <div class="section-box">
             <div class="button-group">
                 <button id="connectBtn" class="btn-primary" onclick="connectBluetooth()">
-                    <span>📶</span> Bluetooth Kapcsolódás
+                    <!-- Hivatalos Bluetooth SVG Ikon -->
+                    <svg class="bt-icon" viewBox="0 0 24 24">
+                        <path d="M14.5 12l4.5-4.5-6-6v8.2L8.7 5.4 7.3 6.8 12 11.5v1l-4.7 4.7 1.4 1.4 4.3-4.3V22.5l6-6-4.5-4.5zm-0.5-6.8l2.7 2.7-2.7 2.7V5.2zm2.7 13.6L14 16.1v5.4l2.7-2.7z"/>
+                    </svg>
+                    Bluetooth Kapcsolódás
                 </button>
                 <button id="disconnectBtn" class="btn-disconnect" onclick="disconnectBluetooth()" disabled>
                     Bontás
@@ -415,7 +413,7 @@
             <div>
                 <div id="status" class="status-badge disconnected">
                     <span class="status-dot"></span>
-                    <span id="statusText">micro:bit nincs csatlakoztatva</span>
+                    <span id="statusText">A micro:bit nincs csatlakoztatva</span>
                 </div>
             </div>
         </div>
@@ -443,7 +441,7 @@
             </div>
 
             <button id="startAiBtn" class="btn-ai" onclick="initAI()">
-                <span>🚀</span> Modell Indítása
+                Modell indítása
             </button>
             
             <!-- Kamera extra vezérlők -->
