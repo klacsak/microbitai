@@ -74,12 +74,13 @@
     </div>
 
     <script>
-        // Nordic Semiconductor UART Service UUID-k (ezt használja a MakeCode UART szolgáltatása)
+        // Nordic Semiconductor UART Service UUID-k
         const UART_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
-        const UART_TX_CHARACTERISTIC_UUID = '6e400002-b5a3-f393-e0a9-e50e24dcca9e'; // RX a micro:bit szemszögéből, TX ide küld a weboldal
+        // 6e400003: A micro:bit RX (fogadó) karakterisztikája – ide kell küldeni a szöveget!
+        const UART_RX_CHARACTERISTIC_UUID = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
 
         let bleDevice = null;
-        let txCharacteristic = null;
+        let rxCharacteristic = null;
 
         const connectBtn = document.getElementById('connectBtn');
         const disconnectBtn = document.getElementById('disconnectBtn');
@@ -93,13 +94,11 @@
                 statusText.innerText = "Keresés...";
                 statusText.className = "";
 
-                // micro:bit keresése az UART szerviz alapján
                 bleDevice = await navigator.bluetooth.requestDevice({
                     filters: [{ namePrefix: 'BBC micro:bit' }],
                     optionalServices: [UART_SERVICE_UUID]
                 });
 
-                // Eseménykezelő, ha a micro:bit oldalon szakadna meg a kapcsolat
                 bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
 
                 statusText.innerText = "Kapcsolódás a GATT szerverhez...";
@@ -109,9 +108,8 @@
                 const service = await server.getPrimaryService(UART_SERVICE_UUID);
 
                 statusText.innerText = "Karakterisztika beállítása...";
-                txCharacteristic = await service.getCharacteristic(UART_TX_CHARACTERISTIC_UUID);
+                rxCharacteristic = await service.getCharacteristic(UART_RX_CHARACTERISTIC_UUID);
 
-                // UI frissítése sikeres csatlakozáskor
                 statusText.innerText = "Kapcsolódva!";
                 statusText.className = "connected";
                 connectBtn.disabled = true;
@@ -141,33 +139,33 @@
             disconnectBtn.disabled = true;
             sendBtn.disabled = true;
             messageInput.disabled = true;
-            txCharacteristic = null;
+            rxCharacteristic = null;
         }
 
         // Üzenet küldése
         async function sendMessage() {
-    const text = messageInput.value.trim();
-    if (!text || !txCharacteristic) return;
+            const text = messageInput.value.trim();
+            if (!text || !rxCharacteristic) return;
 
-    try {
-        const encoder = new TextEncoder();
-        // A micro:bit NewLine kezelése gyakran a standard \r\n (CRLF) sortörést igényli
-        const data = encoder.encode(text + "\r\n");
+            try {
+                const encoder = new TextEncoder();
+                // A micro:bit Delimiters.NewLine elválasztója \r\n-re reagál
+                const data = encoder.encode(text + "\r\n");
 
-        // Ha a böngésző támogatja a válasz nélküli írást, azt használjuk:
-        if (txCharacteristic.writeValueWithoutResponse) {
-            await txCharacteristic.writeValueWithoutResponse(data);
-        } else {
-            await txCharacteristic.writeValue(data);
+                // Írás nyugtázás nélkül (Write Without Response)
+                if (rxCharacteristic.writeValueWithoutResponse) {
+                    await rxCharacteristic.writeValueWithoutResponse(data);
+                } else {
+                    await rxCharacteristic.writeValue(data);
+                }
+
+                console.log("Elküldve:", text);
+                messageInput.value = "";
+            } catch (error) {
+                console.error("Hiba a küldéskor:", error);
+                alert("Küldési hiba: " + error.message);
+            }
         }
-
-        console.log("Elküldve:", text);
-        messageInput.value = "";
-    } catch (error) {
-        console.error("Hiba a küldéskor:", error);
-        alert("Küldési hiba: " + error.message);
-    }
-}
 
         // Enter gombra is küldje el
         messageInput.addEventListener("keyup", function(event) {
