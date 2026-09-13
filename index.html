@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>micro:bit AI Központ</title>
+    <title>micro:bit AI</title>
     <!-- TensorFlow.js és TM Image & Speech könyvtárak -->
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.5/dist/teachablemachine-image.min.js"></script>
@@ -409,7 +409,7 @@
 <body>
 
     <div class="container">
-        <h1>micro:bit AI Központ</h1>
+        <h1>micro:bit AI</h1>
         
         <!-- 1. Bluetooth panel -->
         <div class="section-box">
@@ -421,7 +421,7 @@
                     Kapcsolódás
                 </button>
                 <button id="disconnectBtn" class="btn-disconnect" onclick="disconnectBluetooth()" disabled>
-                    Bontás
+                    Kapcsolat bontása
                 </button>
             </div>
             <div>
@@ -435,8 +435,8 @@
         <!-- 2. AI Konfigurációs panel -->
         <div class="section-box">
             <select id="modelType" onchange="onModelTypeChange()">
-                <option value="image">📷 Képi Modell (Kamera)</option>
-                <option value="audio">🎙️ Hang Modell (Mikrofon)</option>
+                <option value="image">📷 Képi modell (Kamera)</option>
+                <option value="audio">🎙️ Hang modell (Mikrofon)</option>
             </select>
             
             <input type="text" id="modelUrl" placeholder="https://teachablemachine.withgoogle.com/models/...">
@@ -455,7 +455,7 @@
             </div>
 
             <button id="startAiBtn" class="btn-ai" onclick="initAI()">
-                Modell Indítása
+                Modell indítása
             </button>
         </div>
 
