@@ -146,21 +146,28 @@
 
         // Üzenet küldése
         async function sendMessage() {
-            const text = messageInput.value.trim();
-            if (!text || !txCharacteristic) return;
+    const text = messageInput.value.trim();
+    if (!text || !txCharacteristic) return;
 
-            try {
-                // A micro:bit UART olvasó NewLine-ra vár, ezért \n-t fűzünk hozzá
-                const encoder = new TextEncoder();
-                const data = encoder.encode(text + "\n");
+    try {
+        const encoder = new TextEncoder();
+        // A micro:bit NewLine kezelése gyakran a standard \r\n (CRLF) sortörést igényli
+        const data = encoder.encode(text + "\r\n");
 
-                await txCharacteristic.writeValue(data);
-                messageInput.value = ""; // Mező ürítése
-            } catch (error) {
-                console.error("Hiba a küldéskor: ", error);
-                alert("Nem sikerült elküldeni az üzenetet!");
-            }
+        // Ha a böngésző támogatja a válasz nélküli írást, azt használjuk:
+        if (txCharacteristic.writeValueWithoutResponse) {
+            await txCharacteristic.writeValueWithoutResponse(data);
+        } else {
+            await txCharacteristic.writeValue(data);
         }
+
+        console.log("Elküldve:", text);
+        messageInput.value = "";
+    } catch (error) {
+        console.error("Hiba a küldéskor:", error);
+        alert("Küldési hiba: " + error.message);
+    }
+}
 
         // Enter gombra is küldje el
         messageInput.addEventListener("keyup", function(event) {
