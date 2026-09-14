@@ -829,7 +829,7 @@
 
                 if (bestClass !== lastSentClass) {
                     lastSentClass = bestClass;
-                    sendToMicrobit(bestClass + ":" + szazalek);
+                    sendToMicrobit(bestClass + ":" + Math.round(highestProb * 100));
                 }
             }
         }
