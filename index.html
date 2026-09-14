@@ -820,14 +820,16 @@
                 }
             }
 
+            // Döntési küszöb elérése
             if (highestProb >= confidenceThreshold) {
-                const text = `Észlelve: ${bestClass} (${Math.round(highestProb * 100)}%)`;
+                const szazalek = Math.round(highestProb * 100);
+                const text = `Észlelve: ${bestClass} (${szazalek}%)`;
                 predictionResult.innerText = text;
                 fullscreenDetected.innerText = text;
 
                 if (bestClass !== lastSentClass) {
                     lastSentClass = bestClass;
-                    sendToMicrobit(bestClass);
+                    sendToMicrobit(bestClass + ":" + szazalek);
                 }
             }
         }
