@@ -786,6 +786,8 @@
             }
         }
 
+        let lastSendTime = 0; // Időzítő a Bluetooth fojtásához (ne fagyjon le a micro:bit)
+
         function evaluatePredictions(predictions) {
             let highestProb = 0;
             let bestClass = "";
@@ -827,11 +829,15 @@
                 predictionResult.innerText = text;
                 fullscreenDetected.innerText = text;
 
-                if (bestClass !== lastSentClass) {
+                const now = Date.now();
+                // Küldés: ha megváltozott az osztály, VAGY ha ugyanaz maradt, de eltelt legalább 1200 ms (hogy legyen ideje kiírni)
+                if (bestClass !== lastSentClass || (now - lastSendTime > 1200)) {
                     lastSentClass = bestClass;
-                    sendToMicrobit(bestClass + ":" + Math.round(highestProb * 100));
+                    lastSendTime = now;
+                    sendToMicrobit(bestClass + ":" + szazalek);
                 }
             }
+        }
         }
     </script>
 </body>
