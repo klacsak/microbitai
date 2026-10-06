@@ -834,7 +834,7 @@
                 if (bestClass !== lastSentClass || (now - lastSendTime > 1200)) {
                     lastSentClass = bestClass;
                     lastSendTime = now;
-                    sendToMicrobit(bestClass);
+                    sendToMicrobit(bestClass + "\n");
                 }
             }
         }
