@@ -1,14 +1,753 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>micro:bit AI</title>
+    <!-- TensorFlow.js és TM Image & Speech könyvtárak -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8.5/dist/teachablemachine-image.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/speech-commands@0.4.0/dist/speech-commands.min.js"></script>
+    <style>
+        :root {
+            --bg-gradient: radial-gradient(circle at 10% 20%, #eef6fc 0%, #d8e8f8 90%);
+            --card-bg: rgba(255, 255, 255, 0.92);
+            --panel-bg: rgba(241, 246, 252, 0.75);
+            --primary-blue: #0284c7;
+            --primary-gradient: linear-gradient(135deg, #38bdf8 0%, #0284c7 100%);
+            --dark-blue: #0c4a6e;
+            --border-color: rgba(203, 213, 225, 0.8);
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --danger: #ef4444;
+            --danger-bg: #fef2f2;
+            --success: #10b981;
+            --success-bg: #ecfdf5;
+            --radius-lg: 20px;
+            --radius-md: 12px;
+            --radius-sm: 8px;
+            --shadow-card: 0 12px 30px -8px rgba(12, 74, 110, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.8) inset;
+        }
+
+        * {
+            box-sizing: border-box;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            padding: 15px;
+            background: var(--bg-gradient);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            max-width: 480px;
+            width: 100%;
+            padding: 20px 22px;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-card);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--dark-blue);
+            margin: 0 0 12px 0;
+            letter-spacing: -0.5px;
+        }
+
+        .section-box {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 12px 14px;
+            margin-bottom: 12px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 14px;
+            font-size: 13px;
+            font-weight: 600;
+            border: none;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            outline: none;
+        }
+
+        button:active {
+            transform: scale(0.97);
+        }
+
+        button:disabled {
+            background: #cbd5e1 !important;
+            color: #94a3b8 !important;
+            cursor: not-allowed;
+            box-shadow: none !important;
+            transform: none !important;
+        }
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            color: white;
+            box-shadow: 0 3px 10px rgba(2, 132, 199, 0.25);
+        }
+        .btn-primary:hover:not(:disabled) {
+            filter: brightness(1.06);
+            transform: translateY(-1px);
+        }
+
+        .btn-disconnect {
+            background: #ffffff;
+            color: var(--danger);
+            border: 1px solid #fecaca;
+        }
+        .btn-disconnect:hover:not(:disabled) {
+            background: var(--danger-bg);
+            transform: translateY(-1px);
+        }
+
+        .btn-ai {
+            background: var(--primary-gradient);
+            color: white;
+            width: 100%;
+            margin-top: 8px;
+            padding: 10px 14px;
+            font-size: 14px;
+            box-shadow: 0 3px 10px rgba(2, 132, 199, 0.25);
+        }
+        .btn-ai:hover:not(:disabled) {
+            filter: brightness(1.08);
+            transform: translateY(-1px);
+        }
+
+        /* Kamerakép melletti kerek gombok */
+        .camera-side-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .btn-icon-round {
+            width: 38px;
+            height: 38px;
+            padding: 0;
+            border-radius: 50%;
+            background: #ffffff;
+            color: var(--primary-blue);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+        }
+        .btn-icon-round:hover:not(:disabled) {
+            background: #e0f2fe;
+            border-color: var(--primary-blue);
+            transform: scale(1.05);
+        }
+
+        .svg-icon {
+            width: 19px;
+            height: 19px;
+            fill: currentColor;
+            display: inline-block;
+            vertical-align: middle;
+            flex-shrink: 0;
+        }
+
+        .bt-icon {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+        }
+
+        /* Állapotjelző Badge */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 8px;
+            padding: 3px 10px;
+            border-radius: 9999px;
+            font-size: 12px;
+            font-weight: 600;
+            background: #ffffff;
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+        }
+
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #94a3b8;
+        }
+
+        .status-badge.connected {
+            background: var(--success-bg);
+            color: var(--success);
+            border-color: #a7f3d0;
+        }
+        .status-badge.connected .status-dot {
+            background: var(--success);
+            box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+            animation: pulse-dot 1.8s infinite;
+        }
+
+        .status-badge.disconnected {
+            background: var(--danger-bg);
+            color: var(--danger);
+            border-color: #fecaca;
+        }
+        .status-badge.disconnected .status-dot {
+            background: var(--danger);
+        }
+
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.15); }
+        }
+
+        /* Űrlap elemek */
+        input[type="text"], select {
+            width: 100%;
+            padding: 8px 12px;
+            font-size: 13px;
+            border: 1.5px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            background: #ffffff;
+            color: var(--text-main);
+            outline: none;
+            margin-bottom: 6px;
+        }
+        input[type="text"]:focus, select:focus {
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
+        }
+
+        /* Csúszka */
+        .slider-container {
+            margin: 6px 0 2px 0;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+        .slider-header strong {
+            color: var(--primary-blue);
+        }
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        input[type="range"] {
+            flex-grow: 1;
+            height: 5px;
+            border-radius: 3px;
+            background: #cbd5e1;
+            accent-color: var(--primary-blue);
+            outline: none;
+            cursor: pointer;
+        }
+
+        /* Kamera keret & Flex elrendezés a gombokkal */
+        #camera-layout {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin: 10px auto 4px auto;
+        }
+
+        #camera-wrapper {
+            position: relative;
+            max-width: 100%;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            background: #000;
+            box-shadow: 0 6px 18px rgba(12, 74, 110, 0.15);
+            line-height: 0;
+        }
+        #webcam-container canvas {
+            display: block;
+            width: 180px;
+            height: 180px;
+            object-fit: cover;
+        }
+
+        /* Fullscreen HUD */
+        #fullscreen-hud {
+            display: none;
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            right: 15px;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 9999;
+            pointer-events: none;
+        }
+        #fullscreen-detected {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(10px);
+            color: #38bdf8;
+            padding: 6px 14px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .fs-action-btn {
+            pointer-events: auto;
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(10px);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            width: 40px;
+            height: 40px;
+            padding: 0;
+            border-radius: 50%;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #camera-wrapper:fullscreen, #camera-wrapper:-webkit-full-screen {
+            width: 100vw !important; height: 100vh !important;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 0;
+        }
+        #camera-wrapper:fullscreen canvas, #camera-wrapper:-webkit-full-screen canvas {
+            width: auto !important; height: 100vh !important; max-width: 100vw !important; object-fit: contain;
+        }
+        #camera-wrapper:fullscreen #fullscreen-hud, #camera-wrapper:-webkit-full-screen #fullscreen-hud {
+            display: flex;
+        }
+
+        /* Eredményjelző */
+        #prediction-result {
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--dark-blue);
+            margin: 10px 0 8px 0;
+            min-height: 22px;
+        }
+
+        /* Animált sávok */
+        .label-bar-container {
+            max-width: 320px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .label-card {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-sm);
+            padding: 6px 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .label-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-main);
+            position: relative;
+            z-index: 2;
+        }
+
+        .label-progress {
+            position: absolute;
+            top: 0; left: 0; bottom: 0; width: 0%;
+            background: linear-gradient(90deg, rgba(56, 189, 248, 0.25) 0%, rgba(2, 132, 199, 0.4) 100%);
+            border-radius: var(--radius-sm);
+            z-index: 1;
+            transition: width 0.15s ease-out;
+        }
+
+        .label-card.active {
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2);
+        }
+        .label-card.active .label-progress {
+            background: linear-gradient(90deg, rgba(56, 189, 248, 0.4) 0%, rgba(2, 132, 199, 0.7) 100%);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Micro:bit AI</h1>
+        
+        <!-- 1. Bluetooth panel -->
+        <div class="section-box">
+            <div class="button-group">
+                <button id="connectBtn" class="btn-primary" onclick="connectBluetooth()">
+                    <svg class="bt-icon" viewBox="0 0 24 24">
+                        <path d="M14.5 12l4.5-4.5-6-6v8.2L8.7 5.4 7.3 6.8 12 11.5v1l-4.7 4.7 1.4 1.4 4.3-4.3V22.5l6-6-4.5-4.5zm-0.5-6.8l2.7 2.7-2.7 2.7V5.2zm2.7 13.6L14 16.1v5.4l2.7-2.7z"/>
+                    </svg>
+                    Kapcsolódás
+                </button>
+                <button id="disconnectBtn" class="btn-disconnect" onclick="disconnectBluetooth()" disabled>
+                    Kapcsolat bontása
+                </button>
+            </div>
+            <div>
+                <div id="status" class="status-badge disconnected">
+                    <span class="status-dot"></span>
+                    <span id="statusText">Nincs kapcsolat</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. AI Konfigurációs panel -->
+        <div class="section-box">
+            <select id="modelType" onchange="onModelTypeChange()">
+                <option value="image">📷 Képi modell (Kamera)</option>
+                <option value="audio">🎙️ Hang modell (Mikrofon)</option>
+            </select>
+            
+            <input type="text" id="modelUrl" placeholder="https://teachablemachine.withgoogle.com/models/...">
+
+            <!-- Küszöb szabályzó -->
+            <div class="slider-container">
+                <div class="slider-header">
+                    <span>Döntési küszöb:</span>
+                    <strong id="thresholdVal">85%</strong>
+                </div>
+                <div class="slider-row">
+                    <span style="font-size: 10px;">50%</span>
+                    <input type="range" id="thresholdSlider" min="50" max="98" value="85" oninput="updateThreshold(this.value)">
+                    <span style="font-size: 10px;">98%</span>
+                </div>
+            </div>
+
+            <button id="startAiBtn" class="btn-ai" onclick="initAI()">
+                Modell indítása
+            </button>
+        </div>
+
+        <!-- Kamerakép ÉS közvetlenül mellette a két ikon -->
+        <div id="camera-layout">
+            <div id="camera-wrapper">
+                <div id="fullscreen-hud">
+                    <div id="fullscreen-detected">Osztály: -</div>
+                    <div style="display: flex; gap: 8px;">
+                        <button class="fs-action-btn" onclick="switchCamera()" title="Kamera váltása">
+                            <svg class="svg-icon" viewBox="0 0 24 24">
+                                <path d="M20 4h-3.17L15 2H9L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 13c-2.76 0-5-2.24-5-5h2c0 1.66 1.34 3 3 3 1.31 0 2.42-.83 2.83-2H13v-2h4.85c.08.32.15.65.15 1 0 2.76-2.24 5-5 5zm3-8.83C14.42 8.33 13.31 9 12 9c-1.66 0-3 1.34-3 3H7c0-2.76 2.24-5 5-5h1.17V5.5L16 7.67l-2.83 2.17V8.17z"/>
+                            </svg>
+                        </button>
+                        <button class="fs-action-btn" onclick="toggleFullscreen()" title="Kilépés">
+                            <svg class="svg-icon" viewBox="0 0 24 24">
+                                <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                <div id="webcam-container"></div>
+            </div>
+
+            <!-- Oldalsó ikonok a kamera mellett -->
+            <div class="camera-side-controls">
+                <button id="switchCameraBtn" class="btn-icon-round" onclick="switchCamera()" title="Kamera váltása" aria-label="Kamera váltása">
+                    <svg class="svg-icon" viewBox="0 0 24 24">
+                        <path d="M20 4h-3.17L15 2H9L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 13c-2.76 0-5-2.24-5-5h2c0 1.66 1.34 3 3 3 1.31 0 2.42-.83 2.83-2H13v-2h4.85c.08.32.15.65.15 1 0 2.76-2.24 5-5 5zm3-8.83C14.42 8.33 13.31 9 12 9c-1.66 0-3 1.34-3 3H7c0-2.76 2.24-5 5-5h1.17V5.5L16 7.67l-2.83 2.17V8.17z"/>
+                    </svg>
+                </button>
+
+                <button id="fullscreenBtn" class="btn-icon-round" onclick="toggleFullscreen()" title="Teljes képernyő" aria-label="Teljes képernyő">
+                    <svg class="svg-icon" id="fs-btn-icon" viewBox="0 0 24 24">
+                        <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Eredmények és élő sávok -->
+        <div id="prediction-result">Indítsd el a modellt!</div>
+        <div id="label-container" class="label-bar-container"></div>
+    </div>
+
+    <script>
+        const UART_SERVICE_UUID = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+        const UART_RX_CHARACTERISTIC_UUID = '6e400003-b5a3-f393-e0a9-e50e24dcca9e';
+
+        let bleDevice = null;
+        let rxCharacteristic = null;
+        let model = null;
+        let webcam = null;
+        let recognizer = null;
+        let labelContainer = null;
+        let maxPredictions = 0;
+        let isPredicting = false;
+        let lastSentClass = "";
+        let currentFacingMode = 'user';
+        let confidenceThreshold = 0.85;
+
+        const connectBtn = document.getElementById('connectBtn');
+        const disconnectBtn = document.getElementById('disconnectBtn');
+        const statusBadge = document.getElementById('status');
+        const statusText = document.getElementById('statusText');
+        const predictionResult = document.getElementById('prediction-result');
+        const startAiBtn = document.getElementById('startAiBtn');
+        const cameraLayout = document.getElementById('camera-layout');
+        const cameraWrapper = document.getElementById('camera-wrapper');
+        const fullscreenDetected = document.getElementById('fullscreen-detected');
+        const thresholdVal = document.getElementById('thresholdVal');
+        const fsBtnIcon = document.getElementById('fs-btn-icon');
+
+        function updateThreshold(val) {
+            confidenceThreshold = val / 100;
+            thresholdVal.innerText = val + "%";
+        }
+
+        function onModelTypeChange() {
+            stopCurrentAI();
+            cameraLayout.style.display = "none";
+            predictionResult.innerText = "Modell típus módosítva.";
+        }
+
+        async function connectBluetooth() {
+            try {
+                statusText.innerText = "Keresés...";
+                statusBadge.className = "status-badge";
+
+                bleDevice = await navigator.bluetooth.requestDevice({
+                    filters: [{ namePrefix: 'BBC micro:bit' }],
+                    optionalServices: [UART_SERVICE_UUID]
+                });
+
+                bleDevice.addEventListener('gattserverdisconnected', onDisconnected);
+
+                statusText.innerText = "Csatlakozás...";
+                const server = await bleDevice.gatt.connect();
+                const service = await server.getPrimaryService(UART_SERVICE_UUID);
+                rxCharacteristic = await service.getCharacteristic(UART_RX_CHARACTERISTIC_UUID);
+
+                statusText.innerText = "Csatlakoztatva";
+                statusBadge.className = "status-badge connected";
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+            } catch (error) {
+                console.error("Bluetooth hiba: ", error);
+                statusText.innerText = "Sikertelen";
+                statusBadge.className = "status-badge disconnected";
+            }
+        }
+
+        function disconnectBluetooth() {
+            if (bleDevice && bleDevice.gatt.connected) bleDevice.gatt.disconnect();
+        }
+
+        function onDisconnected() {
+            statusText.innerText = "Nincs kapcsolat";
+            statusBadge.className = "status-badge disconnected";
+            connectBtn.disabled = false;
+            disconnectBtn.disabled = true;
+            rxCharacteristic = null;
+            lastSentClass = "";
+        }
+
+        async function sendToMicrobit(className) {
+            if (!rxCharacteristic) return;
+            try {
+                const encoder = new TextEncoder();
+                const data = encoder.encode(className + "\n");
+                if (rxCharacteristic.writeValueWithoutResponse) {
+                    await rxCharacteristic.writeValueWithoutResponse(data);
+                } else {
+                    await rxCharacteristic.writeValue(data);
+                }
+                console.log("micro:bit-nek elküldve:", className);
+            } catch (err) {
+                console.error("Küldési hiba:", err);
+            }
+        }
+
+        function stopCurrentAI() {
+            isPredicting = false;
+            if (webcam) {
+                try {
+                    if (webcam.webcam && webcam.webcam.srcObject) {
+                        webcam.webcam.srcObject.getTracks().forEach(t => t.stop());
+                    }
+                    webcam.stop();
+                } catch(e){}
+                webcam = null;
+            }
+            if (recognizer) {
+                try { recognizer.stopListening(); } catch(e){}
+                recognizer = null;
+            }
+            startAiBtn.disabled = false;
+        }
+
+        async function initAI() {
+            let url = document.getElementById('modelUrl').value.trim();
+            if (!url) {
+                alert("Kérlek add meg a Teachable Machine modell linkjét!");
+                return;
+            }
+            if (!url.endsWith('/')) url += '/';
+
+            stopCurrentAI();
+            startAiBtn.disabled = true;
+            predictionResult.innerText = "Betöltés...";
+
+            const modelType = document.getElementById('modelType').value;
+
+            try {
+                if (modelType === 'image') {
+                    await initImageModel(url);
+                } else {
+                    await initAudioModel(url);
+                }
+            } catch (err) {
+                console.error("AI Betöltési Hiba: ", err);
+                alert("Hiba a betöltéskor! Ellenőrizd a linket és a jogosultságokat.");
+                startAiBtn.disabled = false;
+                predictionResult.innerText = "Betöltési hiba.";
+            }
+        }
+
+        async function initImageModel(url) {
+            const modelURL = url + "model.json";
+            const metadataURL = url + "metadata.json";
+
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+
+            currentFacingMode = 'user';
+            await setupWebcam(currentFacingMode);
+
+            isPredicting = true;
+            window.requestAnimationFrame(imageLoop);
+
+            setupLabelBars(model.getClassLabels());
+            cameraLayout.style.display = "flex";
+            predictionResult.innerText = "Felismerés...";
+        }
+
+        async function setupWebcam(facingMode) {
+            const flip = (facingMode === 'user');
+            webcam = new tmImage.Webcam(224, 224, flip);
+            await webcam.setup({ facingMode: facingMode });
+            await webcam.play();
+            const container = document.getElementById("webcam-container");
+            container.innerHTML = "";
+            container.appendChild(webcam.canvas);
+        }
+
+        async function imageLoop() {
+            if (isPredicting && webcam) {
+                webcam.update();
+                await predictImage();
+                window.requestAnimationFrame(imageLoop);
+            }
+        }
+
+        async function predictImage() {
+            const prediction = await model.predict(webcam.canvas);
+            evaluatePredictions(prediction);
+        }
+
+        async function switchCamera() {
+            if (!webcam) return;
+            const btn = document.getElementById('switchCameraBtn');
+            btn.disabled = true;
+            isPredicting = false;
+            try {
+                if (webcam.webcam && webcam.webcam.srcObject) {
+                    webcam.webcam.srcObject.getTracks().forEach(t => t.stop());
+                }
+                webcam.stop();
+                currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
+                await setupWebcam(currentFacingMode);
+                isPredicting = true;
+                window.requestAnimationFrame(imageLoop);
+            } catch(e) {
+                alert("Nem sikerült kamerát váltani.");
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                if (cameraWrapper.requestFullscreen) cameraWrapper.requestFullscreen();
+                else if (cameraWrapper.webkitRequestFullscreen) cameraWrapper.webkitRequestFullscreen();
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+            }
+        }
+
+        document.addEventListener('fullscreenchange', updateFsIcon);
+        document.addEventListener('webkitfullscreenchange', updateFsIcon);
+
+        function updateFsIcon() {
+            const isFs = document.fullscreenElement || document.webkitFullscreenElement;
+            if (isFs) {
+                fsBtnIcon.innerHTML = '<path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/>';
+                document.getElementById('fullscreenBtn').setAttribute('title', 'Kilépés');
+            } else {
+                fsBtnIcon.innerHTML = '<path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>';
+                document.getElementById('fullscreenBtn').setAttribute('title', 'Teljes képernyő');
+            }
+        }
+
+        async function initAudioModel(url) {
+            const checkpointURL = url + "model.json";
+            const metadataURL = url + "metadata.json";
+
+            recognizer = speechCommands.create(
                 "BROWSER_FFT",
                 undefined,
                 checkpointURL,
                 metadataURL
             );
+
             await recognizer.ensureModelLoaded();
             const words = recognizer.wordLabels();
             maxPredictions = words.length;
+
             setupLabelBars(words);
             cameraLayout.style.display = "none";
             predictionResult.innerText = "Mikrofon aktív...";
+
             recognizer.listen(result => {
                 const predictions = [];
                 for (let i = 0; i < words.length; i++) {
@@ -24,6 +763,7 @@
                 overlapFactor: 0.50
             });
         }
+
         function setupLabelBars(labels) {
             labelContainer = document.getElementById("label-container");
             labelContainer.innerHTML = "";
@@ -31,38 +771,48 @@
                 const card = document.createElement("div");
                 card.className = "label-card";
                 card.id = `label-card-${i}`;
+
                 const progress = document.createElement("div");
                 progress.className = "label-progress";
                 progress.id = `label-progress-${i}`;
+
                 const info = document.createElement("div");
                 info.className = "label-info";
                 info.innerHTML = `<span>${labels[i]}</span><span id="label-val-${i}">0%</span>`;
+
                 card.appendChild(progress);
                 card.appendChild(info);
                 labelContainer.appendChild(card);
             }
         }
+
         let lastSendTime = 0; // Időzítő a Bluetooth fojtásához (ne fagyjon le a micro:bit)
+
         function evaluatePredictions(predictions) {
             let highestProb = 0;
             let bestClass = "";
+
             for (let i = 0; i < predictions.length; i++) {
                 const name = predictions[i].className;
                 const prob = predictions[i].probability;
                 const percent = Math.round(prob * 100);
+
                 const valElem = document.getElementById(`label-val-${i}`);
                 const progElem = document.getElementById(`label-progress-${i}`);
                 const cardElem = document.getElementById(`label-card-${i}`);
+
                 if (valElem && progElem) {
                     valElem.innerText = percent + "%";
                     progElem.style.width = percent + "%";
                 }
+
                 if (name.toLowerCase() !== "background noise") {
                     if (prob > highestProb) {
                         highestProb = prob;
                         bestClass = name;
                     }
                 }
+
                 if (cardElem) {
                     if (prob >= confidenceThreshold && name.toLowerCase() !== "background noise") {
                         cardElem.classList.add('active');
@@ -71,12 +821,14 @@
                     }
                 }
             }
+
             // Döntési küszöb elérése
             if (highestProb >= confidenceThreshold) {
                 const szazalek = Math.round(highestProb * 100);
                 const text = `Észlelve: ${bestClass} (${szazalek}%)`;
                 predictionResult.innerText = text;
                 fullscreenDetected.innerText = text;
+
                 const now = Date.now();
                 // Küldés: ha megváltozott az osztály, VAGY ha ugyanaz maradt, de eltelt legalább 1200 ms (hogy legyen ideje kiírni)
                 if (bestClass !== lastSentClass || (now - lastSendTime > 1200)) {
